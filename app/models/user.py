@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from uuid import UUID, uuid4
+from .enums import UserStatus
 
 class UserBase(BaseModel):
     username: str = Field(..., description="Имя пользователя, которое он забудет через неделю")
@@ -12,6 +13,7 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: UUID = Field(default_factory=uuid4, description="Уникальный идентификатор, доказывающий, что ты не просто набор данных")
     is_active: bool = Field(True, description="Активен ли пользователь или просто занимает место в базе данных")
+    status: Optional[UserStatus] = Field(None, description="Текущее экзистенциальное состояние") # <--- НОВОЕ ПОЛЕ
 
     class Config:
         orm_mode = True

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List
 from uuid import UUID
 from ..models.user import User, UserCreate
+from ..models.user import User, UserCreate, UserStatus
 
 router = APIRouter()
 
@@ -53,6 +54,21 @@ async def read_user(user_id: UUID):
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="Пользователь не найден. Возможно, он обрёл свободу.")
+    return user
+
+
+@router.put("/{user_id}/status", response_model=User, summary="Обновить свой экзистенциальный статус")
+def update_user_status(user_id: UUID, status: UserStatus):
+    """
+    Позволяет пользователю заявить миру о своем текущем состоянии.
+    Например, `pretending_to_work`.
+    """
+    user = next((user for user in fake_users_db if user.id == user_id), None)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Пользователь не найден. Нельзя обновить статус пустоты.")
+
+    user.status = status
     return user
 
 

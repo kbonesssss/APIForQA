@@ -3,6 +3,7 @@ from typing import List
 from uuid import UUID
 from ..models.post import Post, PostCreate
 from .users import fake_users_db  # Импортируем нашу "базу" юзеров
+from ..models.post import Post, PostCreate, Reaction, ReactionType
 
 router = APIRouter()
 
@@ -54,6 +55,43 @@ async def read_post(post_id: UUID):
                             detail="Пост не найден. Наверное, его удалили из-за чрезмерного оптимизма.")
     return post
 
+
+@router.post("/{post_id}/react", response_model=Post, summary="Выразить свое ценное мнение реакцией")
+def react_to_post(post_id: UUID, user_id: UUID, reaction_type: ReactionType):
+    """
+    Позволяет пользователю отреагировать на пост.
+    Если пользователь уже реагировал, его реакция изменится.
+    Нельзя отреагировать на несуществующий пост от имени несуществующего юзера.
+    """
+    post = next((p for p in fake_posts_db if p.id == post_id), None)
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Пост не найден. Реагировать на пустоту бессмысленно.")
+
+    user_exists = any(u.id == user_id for u in fake_users_db)
+    if not user_exists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Пользователь не найден. Призракам реакции не положены.")
+
+    # Проверяем, есть ли уже реакция от этого пользователя
+    existing_reaction_index = -1
+    for i, r in enumerate(post.reactions):
+        if r.user_id == user_id:
+            existing_reaction_index = i
+            break
+
+    if existing_reaction_index != -1:
+        # Если пользователь хочет убрать реакцию, отправив ее повторно
+        if post.reactions[existing_reaction_index].type == reaction_type:
+            post.reactions.pop(existing_reaction_index)
+        else:  # Или изменить
+            post.reactions[existing_reaction_index].type = reaction_type
+    else:
+        # Добавляем новую реакцию
+        new_reaction = Reaction(user_id=user_id, type=reaction_type)
+        post.reactions.append(new_reaction)
+
+    return post
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Удалить чужое мнение")
 async def delete_post(post_id: UUID):
